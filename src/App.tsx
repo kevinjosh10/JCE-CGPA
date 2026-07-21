@@ -6,6 +6,8 @@ import './index.css';
 export default function App() {
   const [gradesSem1, setGradesSem1] = useState<Record<string, string>>({});
   const [gradesSem2, setGradesSem2] = useState<Record<string, string>>({});
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem('jce-cgpa-name') || '');
+  const [tempName, setTempName] = useState('');
   
   // Load from local storage
   useEffect(() => {
@@ -44,13 +46,57 @@ export default function App() {
   };
 
   const clearData = () => {
-    if (confirm('Are you sure you want to reset all grades?')) {
+    if (confirm('Are you sure you want to reset all grades and your name?')) {
       setGradesSem1({});
       setGradesSem2({});
+      setUserName('');
       localStorage.removeItem('jce-cgpa-sem1');
       localStorage.removeItem('jce-cgpa-sem2');
+      localStorage.removeItem('jce-cgpa-name');
     }
   };
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (tempName.trim()) {
+      setUserName(tempName.trim());
+      localStorage.setItem('jce-cgpa-name', tempName.trim());
+    }
+  };
+
+  if (!userName) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center font-sans p-4">
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full pointer-events-none"></div>
+          
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-2xl shadow-lg mx-auto mb-6">
+            JCE
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Welcome to CGPA Calculator</h1>
+          <p className="text-slate-400 mb-8">Please enter your name to continue.</p>
+          
+          <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
+            <input 
+              type="text" 
+              value={tempName}
+              onChange={e => setTempName(e.target.value)}
+              placeholder="e.g. Kevin Joshua"
+              className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-center"
+              required
+            />
+            <button 
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+            >
+              Get Started
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -114,7 +160,7 @@ export default function App() {
                 <ResultRow label="Semester 2 GPA" value={sem2GPA} totalCredits={23} />
                 
                 <div className="mt-8 pt-6 border-t border-slate-700/50 flex flex-col items-center">
-                  <span className="text-sm font-medium text-slate-400 mb-2">Overall CGPA</span>
+                  <span className="text-sm font-medium text-slate-400 mb-2">{userName}'s Overall CGPA</span>
                   <div className={`text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${cgpa !== null ? 'from-blue-400 to-purple-400' : 'from-slate-600 to-slate-500'}`}>
                     {cgpa !== null ? cgpa.toFixed(2) : '-.--'}
                   </div>
