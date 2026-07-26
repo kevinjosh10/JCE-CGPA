@@ -1,12 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #2563EB;
-  --color-primary-dark: #1E40AF;
-  --color-secondary: #7C3AED;
-  --color-accent: #06B6D4;
+  --font-sans: 'Inter', sans-serif;
+  
+  --color-base: #080808;
+  --color-surface: #111111;
+  --color-surface-hover: #191919;
+  --color-border: #222222;
+  --color-border-hover: #333333;
+  --color-text-primary: #EEEEEE;
+  --color-text-secondary: #888888;
+  --color-accent: #3B82F6;
+  --color-accent-glow: rgba(59, 130, 246, 0.5);
 }
 
-body {
-  @apply bg-slate-950 text-slate-100 antialiased font-sans selection:bg-primary selection:text-white;
+@layer base {
+  body {
+    @apply bg-base text-text-primary antialiased font-sans;
+    background-image: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .linear-card {
+    @apply bg-surface border border-border rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.3)] transition-all duration-300;
+  }
+  
+  .linear-card:hover {
+    @apply border-border-hover shadow-[0_12px_40px_rgba(0,0,0,0.5)];
+  }
+
+  .linear-input {
+    @apply w-full bg-base border border-border text-text-primary text-sm rounded-md px-3 py-2 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all hover:border-border-hover;
+  }
+
+  .linear-button {
+    @apply bg-text-primary text-base font-medium text-sm px-4 py-2 rounded-md hover:bg-white transition-all shadow-[0_0_10px_rgba(255,255,255,0.1)] active:scale-[0.98];
+  }
+
+  .linear-button-secondary {
+    @apply bg-surface border border-border text-text-secondary font-medium text-sm px-4 py-2 rounded-md hover:text-text-primary hover:border-border-hover transition-all active:scale-[0.98];
+  }
+
+  .linear-select {
+    @apply appearance-none bg-base border border-border text-text-primary text-sm rounded-md px-3 py-1.5 outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all hover:border-border-hover cursor-pointer w-full;
+  }
+}
+
+/* Unique Animations */
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(12px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fade-in-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); border-color: #222222; }
+  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes number-pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-number-pop {
+  animation: number-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Stagger delays */
+.delay-0 { animation-delay: 0ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+.delay-700 { animation-delay: 700ms; }
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #444444;
 }

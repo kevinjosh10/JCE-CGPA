@@ -4,145 +4,103 @@ import { calculateGPA, calculateCGPA, getSemesterTotalCredits } from './utils/ca
 import './index.css';
 
 export default function App() {
-  const [numSemesters, setNumSemesters] = useState<number>(() => {
-    const saved = localStorage.getItem('jce-cgpa-completed-sems');
-    return saved ? Math.min(8, Math.max(1, parseInt(saved, 10))) : 2;
-  });
-
-  const [grades, setGrades] = useState<Record<number, Record<string, string>>>(() => {
-    const savedGrades: Record<number, Record<string, string>> = {};
-    for (let i = 1; i <= 8; i++) {
-      const savedSem = localStorage.getItem(`jce-cgpa-sem${i}`);
-      if (savedSem) {
-        try {
-          savedGrades[i] = JSON.parse(savedSem);
-        } catch {
-          savedGrades[i] = {};
-        }
-      } else {
-        savedGrades[i] = {};
-      }
-    }
-    return savedGrades;
-  });
-
+  const [grades, setGrades] = useState<Array<Record<string, string>>>(() =>
+    Array.from({ length: 8 }, () => ({}))
+  );
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('jce-cgpa-name') || '');
   const [tempName, setTempName] = useState('');
-  const [tempSemesters, setTempSemesters] = useState<number>(2);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-
-  // Save completed semesters count
+  
+  // Load from local storage
   useEffect(() => {
-    localStorage.setItem('jce-cgpa-completed-sems', numSemesters.toString());
-  }, [numSemesters]);
+    let savedGrades = localStorage.getItem('jce-cgpa-grades');
+    const oldSem1 = localStorage.getItem('jce-cgpa-sem1');
+    const oldSem2 = localStorage.getItem('jce-cgpa-sem2');
 
-  // Save grades to local storage
-  useEffect(() => {
-    for (let i = 1; i <= 8; i++) {
-      if (grades[i]) {
-        localStorage.setItem(`jce-cgpa-sem${i}`, JSON.stringify(grades[i]));
-      }
+    // Migrate v1 data if present
+    if (!savedGrades && (oldSem1 || oldSem2)) {
+      const migratedGrades = Array.from({ length: 8 }, () => ({}));
+      if (oldSem1) migratedGrades[0] = JSON.parse(oldSem1);
+      if (oldSem2) migratedGrades[1] = JSON.parse(oldSem2);
+      savedGrades = JSON.stringify(migratedGrades);
+      
+      localStorage.setItem('jce-cgpa-grades', savedGrades);
+      localStorage.removeItem('jce-cgpa-sem1');
+      localStorage.removeItem('jce-cgpa-sem2');
     }
+
+    if (savedGrades) {
+      setGrades(JSON.parse(savedGrades));
+    }
+  }, []);
+
+  // Save to local storage whenever grades change
+  useEffect(() => {
+    localStorage.setItem('jce-cgpa-grades', JSON.stringify(grades));
   }, [grades]);
 
-  const handleGradeChange = (semesterNum: number, code: string, value: string) => {
-    setGrades(prev => ({
-      ...prev,
-      [semesterNum]: {
-        ...(prev[semesterNum] || {}),
-        [code]: value
-      }
-    }));
+  const handleGradeChange = (semesterIndex: number, code: string, value: string) => {
+    setGrades(prev => {
+      const newGrades = [...prev];
+      newGrades[semesterIndex] = { ...newGrades[semesterIndex], [code]: value };
+      return newGrades;
+    });
   };
 
-  const getProgress = (semesterNum: number) => {
-    const subjects = allSemestersSubjects[semesterNum - 1] || [];
-    const semGrades = grades[semesterNum] || {};
-    const filled = subjects.filter(s => !!semGrades[s.code]).length;
-    return subjects.length > 0 ? (filled / subjects.length) * 100 : 0;
+  const getProgress = (semesterIndex: number) => {
+    const subjects = allSemestersSubjects[semesterIndex];
+    const semGrades = grades[semesterIndex];
+    const requiredSubjects = subjects.filter(s => s.credits > 0);
+    const filled = requiredSubjects.filter(s => !!semGrades[s.code]).length;
+    return requiredSubjects.length > 0 ? (filled / requiredSubjects.length) * 100 : 100;
   };
 
-  const semesterResults = Array.from({ length: numSemesters }, (_, idx) => {
-    const semNum = idx + 1;
-    const subjects = allSemestersSubjects[idx];
-    const semGrades = grades[semNum] || {};
-    const gpa = calculateGPA(subjects, semGrades);
-    const totalCredits = getSemesterTotalCredits(subjects);
-    return { semNum, gpa, totalCredits };
+  const confirmReset = () => {
+    setGrades(Array.from({ length: 8 }, () => ({})));
+    setUserName('');
+    localStorage.removeItem('jce-cgpa-grades');
+    localStorage.removeItem('jce-cgpa-name');
+    setShowResetConfirm(false);
+  };
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (tempName.trim()) {
+      setUserName(tempName.trim());
+      localStorage.setItem('jce-cgpa-name', tempName.trim());
+    }
+  };
+
+  const semesterResults = Array.from({ length: 8 }).map((_, i) => {
+    const subjects = allSemestersSubjects[i];
+    const gpa = calculateGPA(subjects, grades[i]);
+    return { gpa, totalCredits: getSemesterTotalCredits(subjects) };
   });
 
   const cgpa = calculateCGPA(semesterResults);
 
-  const confirmReset = () => {
-    const resetGrades: Record<number, Record<string, string>> = {};
-    for (let i = 1; i <= 8; i++) {
-      resetGrades[i] = {};
-      localStorage.removeItem(`jce-cgpa-sem${i}`);
-    }
-    setGrades(resetGrades);
-    setUserName('');
-    setNumSemesters(2);
-    localStorage.removeItem('jce-cgpa-name');
-    localStorage.removeItem('jce-cgpa-completed-sems');
-    setShowResetConfirm(false);
-  };
-
-  const handleOnboardingSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (tempName.trim()) {
-      setUserName(tempName.trim());
-      setNumSemesters(tempSemesters);
-      localStorage.setItem('jce-cgpa-name', tempName.trim());
-      localStorage.setItem('jce-cgpa-completed-sems', tempSemesters.toString());
-    }
-  };
-
   if (!userName) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center font-sans p-4">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full pointer-events-none"></div>
-          
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-2xl shadow-lg mx-auto mb-6">
+      <div className="min-h-screen bg-base flex flex-col items-center justify-center font-sans p-4">
+        <div className="max-w-sm w-full animate-fade-in-up text-center">
+          <div className="w-12 h-12 bg-white text-black flex items-center justify-center font-bold text-lg rounded-xl mx-auto mb-8 shadow-[0_0_30px_rgba(255,255,255,0.15)]">
             JCE
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome to CGPA Calculator</h1>
-          <p className="text-slate-400 mb-6">Enter your details to calculate your GPA & CGPA.</p>
+          <h1 className="text-2xl font-semibold text-text-primary mb-2 tracking-tight">Welcome</h1>
+          <p className="text-text-secondary mb-10 text-sm">Please enter your name to personalize your calculator.</p>
           
-          <form onSubmit={handleOnboardingSubmit} className="flex flex-col gap-5 text-left">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Your Name</label>
-              <input 
-                type="text" 
-                value={tempName}
-                onChange={e => setTempName(e.target.value)}
-                placeholder="Enter your name"
-                className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Completed Semesters</label>
-              <select
-                value={tempSemesters}
-                onChange={e => setTempSemesters(parseInt(e.target.value, 10))}
-                className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? 'Semester' : 'Semesters'}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button 
-              type="submit"
-              className="mt-2 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
-            >
-              Get Started
+          <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
+            <input 
+              type="text" 
+              value={tempName}
+              onChange={e => setTempName(e.target.value)}
+              placeholder="Your Name"
+              className="linear-input text-center py-3"
+              required
+              autoFocus
+            />
+            <button type="submit" className="linear-button py-3">
+              Continue
             </button>
           </form>
         </div>
@@ -151,117 +109,81 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-base flex flex-col">
       
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4 shadow-sm">
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center">
+        <div className="max-w-6xl w-full mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-lg shadow-lg">
+            <div className="w-7 h-7 bg-white text-black flex items-center justify-center font-bold text-xs rounded-md shadow-sm">
               JCE
             </div>
-            <div>
-              <h1 className="font-semibold text-lg sm:text-xl tracking-tight text-white">CGPA Calculator</h1>
-              <p className="text-xs text-slate-400">Welcome, {userName}</p>
-            </div>
+            <h1 className="font-medium text-sm tracking-wide text-text-primary">CGPA Calculator</h1>
           </div>
-
-          <div className="flex items-center gap-3">
-            {/* Semester selector drop-down */}
-            <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-              <span className="text-xs text-slate-400">Completed Semesters:</span>
-              <select
-                value={numSemesters}
-                onChange={e => setNumSemesters(parseInt(e.target.value, 10))}
-                className="bg-transparent text-xs font-semibold text-white outline-none cursor-pointer"
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <option key={n} value={n} className="bg-slate-900 text-slate-200">
-                    Semesters 1 - {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button 
-              onClick={() => setShowResetConfirm(true)}
-              className="text-xs sm:text-sm px-4 py-2 rounded-full bg-slate-800 text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-slate-700"
-            >
-              Reset All
-            </button>
-          </div>
+          <button 
+            onClick={() => setShowResetConfirm(true)}
+            className="text-xs font-medium text-text-secondary hover:text-red-400 transition-colors"
+          >
+            Reset Data
+          </button>
         </div>
       </header>
 
       {/* Main Layout */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col lg:flex-row gap-10">
         
-        {/* Left Column: Subjects Input for Selected Semesters */}
-        <div className="flex-1 flex flex-col gap-8">
-          {Array.from({ length: numSemesters }, (_, i) => {
-            const semNum = i + 1;
-            const subjects = allSemestersSubjects[i];
-            return (
+        {/* Left Column: Subjects Input */}
+        <div className="flex-1 flex flex-col gap-6 h-[calc(100vh-100px)] overflow-y-auto pr-4 custom-scrollbar pb-10">
+          <div className="animate-fade-in-up mb-2">
+            <h2 className="text-2xl font-semibold text-text-primary tracking-tight">Academic Record</h2>
+            <p className="text-text-secondary text-sm mt-1">Enter your grades to calculate your performance.</p>
+          </div>
+          
+          {allSemestersSubjects.map((subjects, i) => (
+            <div key={`sem-${i}`} className={`animate-fade-in-up delay-${Math.min(i * 100, 700)}`}>
               <SemesterSection 
-                key={semNum}
-                title={`Semester ${semNum}`} 
+                title={`Semester ${i + 1}`}
                 subjects={subjects} 
-                grades={grades[semNum] || {}} 
-                onChange={(code: string, val: string) => handleGradeChange(semNum, code, val)}
-                progress={getProgress(semNum)}
+                grades={grades[i]} 
+                onChange={(code: string, val: string) => handleGradeChange(i, code, val)}
+                progress={getProgress(i)}
               />
-            );
-          })}
+            </div>
+          ))}
         </div>
 
         {/* Right Column: Sticky Results Dashboard */}
-        <div className="w-full lg:w-80">
-          <div className="sticky top-28 flex flex-col gap-6">
+        <div className="w-full lg:w-80 shrink-0">
+          <div className="sticky top-24 flex flex-col gap-6">
             
             {/* Real-time Results Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full pointer-events-none"></div>
-              
-              <h2 className="text-xl font-semibold mb-4 text-white relative z-10">Your Performance</h2>
-              
-              <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar relative z-10">
-                {semesterResults.map(res => (
-                  <div key={res.semNum}>
-                    <ResultRow 
-                      label={`Semester ${res.semNum} GPA`} 
-                      value={res.gpa} 
-                      totalCredits={res.totalCredits} 
-                    />
-                    {res.semNum < numSemesters && (
-                      <div className="h-px w-full bg-slate-800/50 my-3"></div>
-                    )}
-                  </div>
-                ))}
+            <div className={`linear-card p-6 ${cgpa !== null ? 'animate-pulse-glow border-accent/30' : ''}`}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider">{userName}'s CGPA</h2>
               </div>
-
-              <div className="mt-6 pt-6 border-t border-slate-700/50 flex flex-col items-center relative z-10">
-                <span className="text-sm font-medium text-slate-400 mb-2">{userName}'s Overall CGPA</span>
-                <div className={`text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${cgpa !== null ? 'from-blue-400 to-purple-400' : 'from-slate-600 to-slate-500'}`}>
+              
+              <div className="flex flex-col items-center justify-center py-6">
+                <div key={cgpa} className="text-6xl font-semibold text-text-primary tracking-tighter animate-number-pop">
                   {cgpa !== null ? cgpa.toFixed(2) : '-.--'}
                 </div>
+                <div className="text-xs text-text-secondary mt-3">Cumulative Grade Point Average</div>
+              </div>
+
+              <div className="h-px w-full bg-border my-6"></div>
+              
+              <div className="max-h-52 overflow-y-auto pr-3 space-y-4 custom-scrollbar">
+                {semesterResults.map((res, i) => (
+                  <ResultRow key={`res-${i}`} label={`Sem ${i + 1}`} value={res.gpa} />
+                ))}
               </div>
             </div>
 
             {/* Creator Badge */}
-            <div className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-5 text-center">
-              <p className="text-sm text-slate-400 mb-4">
-                Made by <strong className="text-slate-200">Kevin Joshua, CSE</strong>
-              </p>
-              <div className="flex justify-center gap-3">
-                <a href="https://github.com/kevinjosh10" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium transition-colors border border-slate-700 hover:border-slate-600 text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                  GitHub
-                </a>
-                <a href="https://www.linkedin.com/in/kevin-josh10/" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium transition-colors border border-slate-700 hover:border-slate-600 text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-                  LinkedIn
-                </a>
+            <div className="flex items-center justify-between text-xs text-text-secondary px-2">
+              <span>Made by <span className="text-text-primary font-medium">Kevin Joshua, CSE</span></span>
+              <div className="flex gap-3">
+                <a href="https://github.com/kevinjosh10" target="_blank" rel="noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
+                <a href="https://www.linkedin.com/in/kevin-josh10/" target="_blank" rel="noreferrer" className="hover:text-text-primary transition-colors">LinkedIn</a>
               </div>
             </div>
 
@@ -273,29 +195,27 @@ export default function App() {
       {showResetConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-base/80 backdrop-blur-sm animate-scale-in"
             onClick={() => setShowResetConfirm(false)}
+            style={{ animationDuration: '0.2s' }}
           ></div>
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mb-5 mx-auto">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-            </div>
-            <h3 className="text-xl font-bold text-white text-center mb-2">Reset Calculator</h3>
-            <p className="text-slate-400 text-center mb-8 text-sm">
-              Are you sure you want to clear all your grades and reset your setup? This action cannot be undone.
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full relative z-10 shadow-2xl animate-scale-in">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">Reset everything?</h3>
+            <p className="text-text-secondary text-sm mb-6">
+              This will permanently delete all entered grades and your name. You cannot undo this action.
             </p>
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3">
               <button 
                 onClick={() => setShowResetConfirm(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors font-medium text-sm border border-slate-700"
+                className="linear-button-secondary"
               >
                 Cancel
               </button>
               <button 
                 onClick={confirmReset}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors font-medium text-sm shadow-lg shadow-red-500/25"
+                className="bg-red-500/10 text-red-500 border border-red-500/20 font-medium text-sm px-4 py-2 rounded-md hover:bg-red-500 hover:text-white transition-all active:scale-[0.98]"
               >
-                Yes, Reset
+                Reset
               </button>
             </div>
           </div>
@@ -309,41 +229,46 @@ export default function App() {
 
 function SemesterSection({ title, subjects, grades, onChange, progress }: any) {
   return (
-    <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-white">{title}</h2>
+    <section className="linear-card overflow-hidden group">
+      <div className="bg-surface-hover px-5 py-4 flex items-center justify-between border-b border-border transition-colors">
+        <h3 className="font-medium text-sm text-text-primary">{title}</h3>
         <div className="flex items-center gap-3">
-          <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
+          <span className="text-[10px] font-medium text-text-secondary uppercase tracking-wider">{Math.round(progress)}% Filled</span>
+          <div className="w-16 h-1.5 bg-base rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500 ease-out"
+              className="h-full bg-text-primary transition-all duration-700 ease-out"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
-          <span className="text-xs font-semibold text-slate-400 w-12 text-right">{Math.round(progress)}%</span>
         </div>
       </div>
       
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col divide-y divide-border/50">
         {subjects.map((sub: any) => (
           <div 
             key={sub.code} 
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-950/50 border border-slate-800 hover:border-slate-700 transition-colors group"
+            className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-surface-hover/50 transition-colors"
           >
-            <div className="text-sm sm:text-base font-medium text-slate-200 group-hover:text-white transition-colors flex-1">
-              {sub.name} <span className="text-xs text-slate-500 ml-1">({sub.credits} {sub.credits === 1 ? 'credit' : 'credits'})</span>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-[10px] font-mono text-text-secondary">{sub.code}</span>
+              <span className="text-xs sm:text-sm font-medium text-text-primary truncate" title={sub.name}>
+                {sub.name}
+              </span>
+              <span className="text-[10px] text-text-secondary">{sub.credits > 0 ? `${sub.credits} Credits` : 'Non-Credit'}</span>
             </div>
-            <div className="w-full sm:w-48 relative">
+            
+            <div className="w-32 shrink-0 relative">
               <select
                 value={grades[sub.code] || ''}
                 onChange={e => onChange(sub.code, e.target.value)}
-                className="w-full appearance-none bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
+                className="linear-select"
               >
-                <option value="" disabled>Select Grade</option>
+                <option value="" disabled>Grade</option>
                 {Object.keys(gradePoints).map(g => (
                   <option key={g} value={g}>{g === 'S' || g === 'O' ? 'O / S' : g} ({gradePoints[g]})</option>
                 ))}
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary text-[10px]">
                 ▼
               </div>
             </div>
@@ -354,15 +279,12 @@ function SemesterSection({ title, subjects, grades, onChange, progress }: any) {
   );
 }
 
-function ResultRow({ label, value, totalCredits }: any) {
+function ResultRow({ label, value }: any) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col">
-        <span className="text-slate-300 font-medium text-sm">{label}</span>
-        <span className="text-xs text-slate-500">{totalCredits} Credits</span>
-      </div>
-      <div className="text-xl font-bold text-white">
-        {value !== null ? value.toFixed(2) : '-.--'}
+    <div className="flex items-center justify-between py-1 group">
+      <span className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors">{label}</span>
+      <div className="text-sm font-semibold text-text-primary">
+        {value !== null ? value.toFixed(2) : '-'}
       </div>
     </div>
   );
