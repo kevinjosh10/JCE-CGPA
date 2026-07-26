@@ -1,66 +1,99 @@
 import { useState, useEffect } from 'react';
-import { semester1Subjects, semester2Subjects, gradePoints } from './data/curriculum';
-import { calculateGPA, calculateCGPA } from './utils/calculator';
+import { allSemestersSubjects, gradePoints } from './data/curriculum';
+import { calculateGPA, calculateCGPA, getSemesterTotalCredits } from './utils/calculator';
 import './index.css';
 
 export default function App() {
-  const [gradesSem1, setGradesSem1] = useState<Record<string, string>>({});
-  const [gradesSem2, setGradesSem2] = useState<Record<string, string>>({});
+  const [numSemesters, setNumSemesters] = useState<number>(() => {
+    const saved = localStorage.getItem('jce-cgpa-completed-sems');
+    return saved ? Math.min(8, Math.max(1, parseInt(saved, 10))) : 2;
+  });
+
+  const [grades, setGrades] = useState<Record<number, Record<string, string>>>(() => {
+    const savedGrades: Record<number, Record<string, string>> = {};
+    for (let i = 1; i <= 8; i++) {
+      const savedSem = localStorage.getItem(`jce-cgpa-sem${i}`);
+      if (savedSem) {
+        try {
+          savedGrades[i] = JSON.parse(savedSem);
+        } catch {
+          savedGrades[i] = {};
+        }
+      } else {
+        savedGrades[i] = {};
+      }
+    }
+    return savedGrades;
+  });
+
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('jce-cgpa-name') || '');
   const [tempName, setTempName] = useState('');
+  const [tempSemesters, setTempSemesters] = useState<number>(2);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  
-  // Load from local storage
+
+  // Save completed semesters count
   useEffect(() => {
-    const saved1 = localStorage.getItem('jce-cgpa-sem1');
-    const saved2 = localStorage.getItem('jce-cgpa-sem2');
-    if (saved1) setGradesSem1(JSON.parse(saved1));
-    if (saved2) setGradesSem2(JSON.parse(saved2));
-  }, []);
+    localStorage.setItem('jce-cgpa-completed-sems', numSemesters.toString());
+  }, [numSemesters]);
 
-  // Save to local storage whenever grades change
+  // Save grades to local storage
   useEffect(() => {
-    localStorage.setItem('jce-cgpa-sem1', JSON.stringify(gradesSem1));
-  }, [gradesSem1]);
-
-  useEffect(() => {
-    localStorage.setItem('jce-cgpa-sem2', JSON.stringify(gradesSem2));
-  }, [gradesSem2]);
-
-  const sem1GPA = calculateGPA(semester1Subjects, gradesSem1);
-  const sem2GPA = calculateGPA(semester2Subjects, gradesSem2);
-  const cgpa = calculateCGPA(sem1GPA, sem2GPA);
-
-  const handleGradeChange = (semester: 1 | 2, code: string, value: string) => {
-    if (semester === 1) {
-      setGradesSem1(prev => ({ ...prev, [code]: value }));
-    } else {
-      setGradesSem2(prev => ({ ...prev, [code]: value }));
+    for (let i = 1; i <= 8; i++) {
+      if (grades[i]) {
+        localStorage.setItem(`jce-cgpa-sem${i}`, JSON.stringify(grades[i]));
+      }
     }
+  }, [grades]);
+
+  const handleGradeChange = (semesterNum: number, code: string, value: string) => {
+    setGrades(prev => ({
+      ...prev,
+      [semesterNum]: {
+        ...(prev[semesterNum] || {}),
+        [code]: value
+      }
+    }));
   };
 
-  const getProgress = (semester: 1 | 2) => {
-    const subjects = semester === 1 ? semester1Subjects : semester2Subjects;
-    const grades = semester === 1 ? gradesSem1 : gradesSem2;
-    const filled = subjects.filter(s => !!grades[s.code]).length;
-    return (filled / subjects.length) * 100;
+  const getProgress = (semesterNum: number) => {
+    const subjects = allSemestersSubjects[semesterNum - 1] || [];
+    const semGrades = grades[semesterNum] || {};
+    const filled = subjects.filter(s => !!semGrades[s.code]).length;
+    return subjects.length > 0 ? (filled / subjects.length) * 100 : 0;
   };
+
+  const semesterResults = Array.from({ length: numSemesters }, (_, idx) => {
+    const semNum = idx + 1;
+    const subjects = allSemestersSubjects[idx];
+    const semGrades = grades[semNum] || {};
+    const gpa = calculateGPA(subjects, semGrades);
+    const totalCredits = getSemesterTotalCredits(subjects);
+    return { semNum, gpa, totalCredits };
+  });
+
+  const cgpa = calculateCGPA(semesterResults);
 
   const confirmReset = () => {
-    setGradesSem1({});
-    setGradesSem2({});
+    const resetGrades: Record<number, Record<string, string>> = {};
+    for (let i = 1; i <= 8; i++) {
+      resetGrades[i] = {};
+      localStorage.removeItem(`jce-cgpa-sem${i}`);
+    }
+    setGrades(resetGrades);
     setUserName('');
-    localStorage.removeItem('jce-cgpa-sem1');
-    localStorage.removeItem('jce-cgpa-sem2');
+    setNumSemesters(2);
     localStorage.removeItem('jce-cgpa-name');
+    localStorage.removeItem('jce-cgpa-completed-sems');
     setShowResetConfirm(false);
   };
 
-  const handleNameSubmit = (e: React.FormEvent) => {
+  const handleOnboardingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (tempName.trim()) {
       setUserName(tempName.trim());
+      setNumSemesters(tempSemesters);
       localStorage.setItem('jce-cgpa-name', tempName.trim());
+      localStorage.setItem('jce-cgpa-completed-sems', tempSemesters.toString());
     }
   };
 
@@ -75,20 +108,39 @@ export default function App() {
             JCE
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Welcome to CGPA Calculator</h1>
-          <p className="text-slate-400 mb-8">Please enter your name to continue.</p>
+          <p className="text-slate-400 mb-6">Enter your details to calculate your GPA & CGPA.</p>
           
-          <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
-            <input 
-              type="text" 
-              value={tempName}
-              onChange={e => setTempName(e.target.value)}
-              placeholder="Your Name"
-              className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-center"
-              required
-            />
+          <form onSubmit={handleOnboardingSubmit} className="flex flex-col gap-5 text-left">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Your Name</label>
+              <input 
+                type="text" 
+                value={tempName}
+                onChange={e => setTempName(e.target.value)}
+                placeholder="Enter your name"
+                className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Completed Semesters</label>
+              <select
+                value={tempSemesters}
+                onChange={e => setTempSemesters(parseInt(e.target.value, 10))}
+                className="w-full bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? 'Semester' : 'Semesters'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button 
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+              className="mt-2 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
             >
               Get Started
             </button>
@@ -103,44 +155,63 @@ export default function App() {
       
       {/* Header */}
       <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4 shadow-sm">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-lg shadow-lg">
               JCE
             </div>
-            <h1 className="font-semibold text-lg sm:text-xl tracking-tight text-white">CGPA Calculator</h1>
+            <div>
+              <h1 className="font-semibold text-lg sm:text-xl tracking-tight text-white">CGPA Calculator</h1>
+              <p className="text-xs text-slate-400">Welcome, {userName}</p>
+            </div>
           </div>
-          <button 
-            onClick={() => setShowResetConfirm(true)}
-            className="text-xs sm:text-sm px-4 py-2 rounded-full bg-slate-800 text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-slate-700"
-          >
-            Reset All
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* Semester selector drop-down */}
+            <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+              <span className="text-xs text-slate-400">Completed Semesters:</span>
+              <select
+                value={numSemesters}
+                onChange={e => setNumSemesters(parseInt(e.target.value, 10))}
+                className="bg-transparent text-xs font-semibold text-white outline-none cursor-pointer"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                  <option key={n} value={n} className="bg-slate-900 text-slate-200">
+                    Semesters 1 - {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button 
+              onClick={() => setShowResetConfirm(true)}
+              className="text-xs sm:text-sm px-4 py-2 rounded-full bg-slate-800 text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-colors border border-slate-700"
+            >
+              Reset All
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Layout */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-8">
         
-        {/* Left Column: Subjects Input */}
+        {/* Left Column: Subjects Input for Selected Semesters */}
         <div className="flex-1 flex flex-col gap-8">
-          
-          <SemesterSection 
-            title="Semester 1" 
-            subjects={semester1Subjects} 
-            grades={gradesSem1} 
-            onChange={(code: string, val: string) => handleGradeChange(1, code, val)}
-            progress={getProgress(1)}
-          />
-
-          <SemesterSection 
-            title="Semester 2" 
-            subjects={semester2Subjects} 
-            grades={gradesSem2} 
-            onChange={(code: string, val: string) => handleGradeChange(2, code, val)}
-            progress={getProgress(2)}
-          />
-
+          {Array.from({ length: numSemesters }, (_, i) => {
+            const semNum = i + 1;
+            const subjects = allSemestersSubjects[i];
+            return (
+              <SemesterSection 
+                key={semNum}
+                title={`Semester ${semNum}`} 
+                subjects={subjects} 
+                grades={grades[semNum] || {}} 
+                onChange={(code: string, val: string) => handleGradeChange(semNum, code, val)}
+                progress={getProgress(semNum)}
+              />
+            );
+          })}
         </div>
 
         {/* Right Column: Sticky Results Dashboard */}
@@ -152,18 +223,27 @@ export default function App() {
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full pointer-events-none"></div>
               <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full pointer-events-none"></div>
               
-              <h2 className="text-xl font-semibold mb-6 text-white relative z-10">Your Performance</h2>
+              <h2 className="text-xl font-semibold mb-4 text-white relative z-10">Your Performance</h2>
               
-              <div className="space-y-6 relative z-10">
-                <ResultRow label="Semester 1 GPA" value={sem1GPA} totalCredits={22} />
-                <div className="h-px w-full bg-slate-800/50"></div>
-                <ResultRow label="Semester 2 GPA" value={sem2GPA} totalCredits={23} />
-                
-                <div className="mt-8 pt-6 border-t border-slate-700/50 flex flex-col items-center">
-                  <span className="text-sm font-medium text-slate-400 mb-2">{userName}'s Overall CGPA</span>
-                  <div className={`text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${cgpa !== null ? 'from-blue-400 to-purple-400' : 'from-slate-600 to-slate-500'}`}>
-                    {cgpa !== null ? cgpa.toFixed(2) : '-.--'}
+              <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar relative z-10">
+                {semesterResults.map(res => (
+                  <div key={res.semNum}>
+                    <ResultRow 
+                      label={`Semester ${res.semNum} GPA`} 
+                      value={res.gpa} 
+                      totalCredits={res.totalCredits} 
+                    />
+                    {res.semNum < numSemesters && (
+                      <div className="h-px w-full bg-slate-800/50 my-3"></div>
+                    )}
                   </div>
+                ))}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-slate-700/50 flex flex-col items-center relative z-10">
+                <span className="text-sm font-medium text-slate-400 mb-2">{userName}'s Overall CGPA</span>
+                <div className={`text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${cgpa !== null ? 'from-blue-400 to-purple-400' : 'from-slate-600 to-slate-500'}`}>
+                  {cgpa !== null ? cgpa.toFixed(2) : '-.--'}
                 </div>
               </div>
             </div>
@@ -202,7 +282,7 @@ export default function App() {
             </div>
             <h3 className="text-xl font-bold text-white text-center mb-2">Reset Calculator</h3>
             <p className="text-slate-400 text-center mb-8 text-sm">
-              Are you sure you want to clear all your grades and reset your name? This action cannot be undone.
+              Are you sure you want to clear all your grades and reset your setup? This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button 
@@ -250,20 +330,20 @@ function SemesterSection({ title, subjects, grades, onChange, progress }: any) {
             className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-950/50 border border-slate-800 hover:border-slate-700 transition-colors group"
           >
             <div className="text-sm sm:text-base font-medium text-slate-200 group-hover:text-white transition-colors flex-1">
-              {sub.name}
+              {sub.name} <span className="text-xs text-slate-500 ml-1">({sub.credits} {sub.credits === 1 ? 'credit' : 'credits'})</span>
             </div>
             <div className="w-full sm:w-48 relative">
               <select
                 value={grades[sub.code] || ''}
                 onChange={e => onChange(sub.code, e.target.value)}
-                className="w-full appearance-none bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="w-full appearance-none bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
               >
                 <option value="" disabled>Select Grade</option>
                 {Object.keys(gradePoints).map(g => (
                   <option key={g} value={g}>{g === 'S' || g === 'O' ? 'O / S' : g} ({gradePoints[g]})</option>
                 ))}
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">
                 ▼
               </div>
             </div>
@@ -278,10 +358,10 @@ function ResultRow({ label, value, totalCredits }: any) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-col">
-        <span className="text-slate-300 font-medium">{label}</span>
+        <span className="text-slate-300 font-medium text-sm">{label}</span>
         <span className="text-xs text-slate-500">{totalCredits} Credits</span>
       </div>
-      <div className="text-2xl font-bold text-white">
+      <div className="text-xl font-bold text-white">
         {value !== null ? value.toFixed(2) : '-.--'}
       </div>
     </div>
