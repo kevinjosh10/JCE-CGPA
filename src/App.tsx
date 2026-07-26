@@ -91,10 +91,19 @@ export default function App() {
 
   if (!userName) {
     return (
-      <div className="min-h-screen bg-base flex flex-col items-center justify-center font-sans p-4">
-        <div className="max-w-sm w-full animate-fade-in-up text-center">
-          <div className="w-12 h-12 bg-accent text-base flex items-center justify-center font-bold text-lg rounded-xl mx-auto mb-8 shadow-[0_0_30px_rgba(34,197,94,0.15)]">
-            JCE
+      <div className="min-h-screen bg-base flex flex-col items-center justify-center font-sans p-4 relative overflow-hidden">
+        
+        {/* Background decorations */}
+        <div className="fixed top-0 right-0 w-80 h-80 text-[#A3D8AE]/20 pointer-events-none transform translate-x-10 -translate-y-10">
+          <DecorativeBranch />
+        </div>
+        <div className="fixed bottom-0 left-0 w-96 h-96 text-[#A3D8AE]/20 pointer-events-none transform -translate-x-10 translate-y-20 -scale-x-100">
+          <DecorativeBranch />
+        </div>
+
+        <div className="max-w-sm w-full animate-fade-in-up text-center relative z-10">
+          <div className="w-14 h-14 bg-accent text-white flex items-center justify-center rounded-2xl mx-auto mb-8 shadow-lg shadow-accent/20">
+            <LeafIcon className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-semibold text-text-primary mb-2 tracking-tight">Welcome</h1>
           <p className="text-text-secondary mb-10 text-sm">Please enter your name and select how many semesters you have completed.</p>
@@ -128,16 +137,24 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-base flex flex-col">
+    <div className="min-h-screen bg-base flex flex-col relative overflow-hidden">
       
+      {/* Background decorations */}
+      <div className="fixed top-0 right-0 w-80 h-80 text-[#D1E8D5] pointer-events-none z-0 transform translate-x-10 -translate-y-10">
+        <DecorativeBranch />
+      </div>
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] text-[#D1E8D5] pointer-events-none z-0 transform -translate-x-20 translate-y-20 -scale-x-100">
+        <DecorativeBranch />
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center">
+      <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center shadow-sm">
         <div className="max-w-6xl w-full mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-accent text-base flex items-center justify-center font-bold text-xs rounded-md shadow-sm">
-              JCE
+            <div className="w-8 h-8 bg-accent text-white flex items-center justify-center rounded-lg shadow-md shadow-accent/20">
+              <LeafIcon className="w-5 h-5" />
             </div>
-            <h1 className="font-medium text-sm tracking-wide text-text-primary">CGPA Calculator</h1>
+            <h1 className="font-semibold text-sm tracking-wide text-text-primary">CGPA Calculator</h1>
           </div>
           <div className="flex items-center gap-5">
             <select 
@@ -166,13 +183,13 @@ export default function App() {
       </header>
 
       {/* Main Layout */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col lg:flex-row gap-10">
+      <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col lg:flex-row gap-10 relative z-10">
         
         {/* Left Column: Subjects Input */}
-        <div className="flex-1 flex flex-col gap-6 h-[calc(100vh-100px)] overflow-y-auto pr-4 custom-scrollbar pb-10">
+        <div className="flex-1 flex flex-col gap-8 h-[calc(100vh-100px)] overflow-y-auto pr-4 custom-scrollbar pb-10">
           <div className="animate-fade-in-up mb-2">
-            <h2 className="text-2xl font-semibold text-text-primary tracking-tight">Academic Record</h2>
-            <p className="text-text-secondary text-sm mt-1">Enter your grades to calculate your performance.</p>
+            <h2 className="text-3xl font-bold text-text-primary tracking-tight">Academic Journey</h2>
+            <p className="text-text-secondary text-sm mt-2">Nurture your grades and watch your progress grow.</p>
           </div>
           
           {allSemestersSubjects.slice(0, completedSems).map((subjects, i) => (
@@ -265,17 +282,22 @@ export default function App() {
 
 function SemesterSection({ title, subjects, grades, onChange, progress }: any) {
   return (
-    <section className="linear-card overflow-hidden group">
-      <div className="bg-surface-hover px-5 py-4 flex items-center justify-between border-b border-border transition-colors">
-        <h3 className="font-medium text-sm text-text-primary">{title}</h3>
+    <section className="linear-card overflow-hidden group relative">
+      <div className="absolute top-0 left-0 w-full h-1 bg-accent/20">
+        <div 
+          className="h-full bg-accent transition-all duration-700 ease-out"
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+      <div className="bg-surface-hover/50 px-5 py-4 flex items-center justify-between border-b border-border transition-colors mt-1">
+        <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
+          <LeafIcon className="w-4 h-4 text-accent" />
+          {title}
+        </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-medium text-text-secondary uppercase tracking-wider">{Math.round(progress)}% Filled</span>
-          <div className="w-16 h-1.5 bg-base rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-text-primary transition-all duration-700 ease-out"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
+          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider bg-border/50 px-2 py-1 rounded-full">
+            {Math.round(progress)}% Filled
+          </span>
         </div>
       </div>
       
@@ -323,5 +345,29 @@ function ResultRow({ label, value }: any) {
         {value !== null ? value.toFixed(2) : '-'}
       </div>
     </div>
+  );
+}
+
+// Decorative SVGs
+function DecorativeBranch({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M200 0C200 0 150 20 100 80C50 140 0 200 0 200" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+      <path d="M140 45C140 45 120 70 80 80" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M100 80C100 80 80 120 40 140" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+      {/* Leaves */}
+      <path d="M150 25C155 15 170 10 180 20C190 30 185 45 175 50C165 55 150 45 150 25Z" fill="currentColor" className="text-accent/40"/>
+      <path d="M110 55C115 45 130 40 140 50C150 60 145 75 135 80C125 85 110 75 110 55Z" fill="currentColor" className="text-accent/40"/>
+      <path d="M70 100C75 90 90 85 100 95C110 105 105 120 95 125C85 130 70 120 70 100Z" fill="currentColor" className="text-accent/40"/>
+    </svg>
+  );
+}
+
+function LeafIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 22C12 22 20 18 20 12C20 6 12 2 12 2C12 2 4 6 4 12C4 18 12 22 12 22Z" fill="currentColor"/>
+      <path d="M12 22V12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
   );
 }
