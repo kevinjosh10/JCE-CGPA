@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import confetti from 'canvas-confetti';
 import { allSemestersSubjects, gradePoints } from './data/curriculum';
-import { calculateGPA, calculateCGPA, getSemesterTotalCredits } from './utils/calculator';
+import { calculateGPA, calculateCGPA, getSemesterTotalCredits, calculateTargetForecaster } from './utils/calculator';
 import './index.css';
 
 export default function App() {
@@ -15,11 +17,15 @@ export default function App() {
   const [tempName, setTempName] = useState('');
   const [tempSems, setTempSems] = useState<number>(completedSems);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [targetCGPA, setTargetCGPA] = useState<string>('');
   
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('jce-cgpa-theme');
     return saved !== null ? saved === 'dark' : true; // Default to dark mode!
   });
+
+  const resultsCardRef = useRef<HTMLDivElement>(null);
+  const hasCelebrated = useRef<boolean>(false);
 
   // Apply dark mode class to html
   useEffect(() => {
@@ -38,7 +44,6 @@ export default function App() {
     const oldSem1 = localStorage.getItem('jce-cgpa-sem1');
     const oldSem2 = localStorage.getItem('jce-cgpa-sem2');
 
-    // Migrate v1 data if present
     if (!savedGrades && (oldSem1 || oldSem2)) {
       const migratedGrades = Array.from({ length: 8 }, () => ({}));
       if (oldSem1) migratedGrades[0] = JSON.parse(oldSem1);
@@ -81,6 +86,7 @@ export default function App() {
     setUserName('');
     setCompletedSems(8);
     setTempSems(8);
+    setTargetCGPA('');
     localStorage.removeItem('jce-cgpa-grades');
     localStorage.removeItem('jce-cgpa-name');
     localStorage.removeItem('jce-cgpa-sems');
@@ -105,11 +111,41 @@ export default function App() {
 
   const cgpa = calculateCGPA(semesterResults);
 
+  // High-Achiever Celebration
+  useEffect(() => {
+    if (cgpa !== null && cgpa >= 9.0 && !hasCelebrated.current) {
+      hasCelebrated.current = true;
+      confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.6 },
+        colors: ['#10B981', '#34D399', '#FBBF24', '#F59E0B'],
+        disableForReducedMotion: true
+      });
+    } else if (cgpa !== null && cgpa < 9.0) {
+      hasCelebrated.current = false;
+    }
+  }, [cgpa]);
+
+  const handleDownload = async () => {
+    if (resultsCardRef.current) {
+      const canvas = await html2canvas(resultsCardRef.current, { 
+        backgroundColor: isDarkMode ? '#131f18' : '#FFFFFF',
+        scale: 2 // High resolution
+      });
+      const image = canvas.toDataURL("image/png");
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `JCE-CGPA-${userName}.png`;
+      link.click();
+    }
+  };
+
+  const forecasterResult = targetCGPA ? calculateTargetForecaster(semesterResults, completedSems, Number(targetCGPA)) : null;
+
   if (!userName) {
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center font-sans p-4 overflow-hidden">
-        
-        {/* Cinematic Video Background */}
         <video 
           autoPlay 
           muted 
@@ -117,11 +153,9 @@ export default function App() {
           playsInline 
           className="absolute inset-0 w-full h-full object-cover z-0"
         >
-          {/* Stunning royalty-free forest drone video */}
           <source src="https://cdn.pixabay.com/video/2020/07/22/45283-442878703_large.mp4" type="video/mp4" />
         </video>
         
-        {/* Overlay to ensure text is perfectly readable over the video */}
         <div className="absolute inset-0 bg-black/60 z-0 backdrop-blur-[2px]"></div>
 
         <div className="max-w-sm w-full animate-fade-in-up text-center relative z-10 bg-base/80 backdrop-blur-xl p-8 rounded-3xl border border-border/50 shadow-2xl shadow-black/50">
@@ -162,7 +196,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-base flex flex-col relative overflow-hidden transition-colors duration-500">
       
-      {/* Background decorations */}
       <div className="fixed top-0 right-0 w-80 h-80 text-border pointer-events-none z-0 transform translate-x-10 -translate-y-10 transition-colors duration-500">
         <DecorativeBranch />
       </div>
@@ -170,7 +203,6 @@ export default function App() {
         <DecorativeBranch />
       </div>
 
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center shadow-sm transition-colors duration-500">
         <div className="max-w-6xl w-full mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -216,10 +248,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Layout */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 flex flex-col lg:flex-row gap-10 relative z-10">
         
-        {/* Left Column: Subjects Input */}
         <div className="flex-1 flex flex-col gap-8 h-[calc(100vh-100px)] overflow-y-auto pr-4 custom-scrollbar pb-10">
           <div className="animate-fade-in-up mb-2">
             <h2 className="text-3xl font-bold text-text-primary tracking-tight">Academic Journey</h2>
@@ -239,14 +269,22 @@ export default function App() {
           ))}
         </div>
 
-        {/* Right Column: Sticky Results Dashboard */}
         <div className="w-full lg:w-80 shrink-0">
           <div className="sticky top-24 flex flex-col gap-6">
             
             {/* Real-time Results Card */}
-            <div className={`linear-card p-6 ${cgpa !== null ? 'animate-pulse-glow border-accent/30' : ''}`}>
+            <div ref={resultsCardRef} className={`linear-card p-6 ${cgpa !== null ? 'animate-pulse-glow border-accent/30' : ''}`}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider">{userName}'s CGPA</h2>
+                <button 
+                  onClick={handleDownload}
+                  data-html2canvas-ignore
+                  className="text-text-secondary hover:text-accent transition-colors flex items-center gap-1.5 text-xs font-semibold bg-surface-hover px-2 py-1 rounded-md border border-border"
+                  title="Share Results Image"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  Share
+                </button>
               </div>
               
               <div className="flex flex-col items-center justify-center py-6">
@@ -263,6 +301,25 @@ export default function App() {
                   <ResultRow key={`res-${i}`} label={`Sem ${i + 1}`} value={res.gpa} />
                 ))}
               </div>
+
+              {/* Target Forecaster */}
+              <div className="mt-6 pt-6 border-t border-border transition-colors duration-500" data-html2canvas-ignore>
+                <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Target Forecaster</label>
+                <input 
+                  type="number"
+                  step="0.1"
+                  max="10"
+                  value={targetCGPA}
+                  onChange={e => setTargetCGPA(e.target.value)}
+                  placeholder="Set Goal CGPA (e.g. 9.0)"
+                  className="linear-input text-xs py-2 mb-2 bg-surface-hover"
+                />
+                {forecasterResult && (
+                  <div className={`text-[11px] font-medium px-3 py-2 rounded-lg leading-relaxed ${forecasterResult.possible ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                    {forecasterResult.message}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Creator Badge */}
@@ -278,7 +335,6 @@ export default function App() {
         </div>
       </main>
 
-      {/* Custom Reset Confirmation Modal */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
