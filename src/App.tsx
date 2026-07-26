@@ -16,6 +16,22 @@ export default function App() {
   const [tempSems, setTempSems] = useState<number>(completedSems);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('jce-cgpa-theme');
+    return saved !== null ? saved === 'dark' : true; // Default to dark mode!
+  });
+
+  // Apply dark mode class to html
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('jce-cgpa-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('jce-cgpa-theme', 'light');
+    }
+  }, [isDarkMode]);
+  
   // Load from local storage
   useEffect(() => {
     let savedGrades = localStorage.getItem('jce-cgpa-grades');
@@ -91,22 +107,29 @@ export default function App() {
 
   if (!userName) {
     return (
-      <div className="min-h-screen bg-base flex flex-col items-center justify-center font-sans p-4 relative overflow-hidden">
+      <div className="min-h-screen relative flex flex-col items-center justify-center font-sans p-4 overflow-hidden">
         
-        {/* Background decorations */}
-        <div className="fixed top-0 right-0 w-80 h-80 text-[#A3D8AE]/20 pointer-events-none transform translate-x-10 -translate-y-10">
-          <DecorativeBranch />
-        </div>
-        <div className="fixed bottom-0 left-0 w-96 h-96 text-[#A3D8AE]/20 pointer-events-none transform -translate-x-10 translate-y-20 -scale-x-100">
-          <DecorativeBranch />
-        </div>
+        {/* Cinematic Video Background */}
+        <video 
+          autoPlay 
+          muted 
+          loop 
+          playsInline 
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        >
+          {/* Stunning royalty-free forest drone video */}
+          <source src="https://cdn.pixabay.com/video/2020/07/22/45283-442878703_large.mp4" type="video/mp4" />
+        </video>
+        
+        {/* Overlay to ensure text is perfectly readable over the video */}
+        <div className="absolute inset-0 bg-black/60 z-0 backdrop-blur-[2px]"></div>
 
-        <div className="max-w-sm w-full animate-fade-in-up text-center relative z-10">
-          <div className="w-14 h-14 bg-accent text-white flex items-center justify-center rounded-2xl mx-auto mb-8 shadow-lg shadow-accent/20">
+        <div className="max-w-sm w-full animate-fade-in-up text-center relative z-10 bg-base/80 backdrop-blur-xl p-8 rounded-3xl border border-border/50 shadow-2xl shadow-black/50">
+          <div className="w-14 h-14 bg-accent text-white flex items-center justify-center rounded-2xl mx-auto mb-6 shadow-lg shadow-accent/20">
             <LeafIcon className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-semibold text-text-primary mb-2 tracking-tight">Welcome</h1>
-          <p className="text-text-secondary mb-10 text-sm">Please enter your name and select how many semesters you have completed.</p>
+          <p className="text-text-secondary mb-8 text-sm">Please enter your name and select how many semesters you have completed.</p>
           
           <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
             <input 
@@ -137,18 +160,18 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-base flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-base flex flex-col relative overflow-hidden transition-colors duration-500">
       
       {/* Background decorations */}
-      <div className="fixed top-0 right-0 w-80 h-80 text-[#D1E8D5] pointer-events-none z-0 transform translate-x-10 -translate-y-10">
+      <div className="fixed top-0 right-0 w-80 h-80 text-border pointer-events-none z-0 transform translate-x-10 -translate-y-10 transition-colors duration-500">
         <DecorativeBranch />
       </div>
-      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] text-[#D1E8D5] pointer-events-none z-0 transform -translate-x-20 translate-y-20 -scale-x-100">
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] text-border pointer-events-none z-0 transform -translate-x-20 translate-y-20 -scale-x-100 transition-colors duration-500">
         <DecorativeBranch />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center shadow-sm">
+      <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center shadow-sm transition-colors duration-500">
         <div className="max-w-6xl w-full mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-accent text-white flex items-center justify-center rounded-lg shadow-md shadow-accent/20">
@@ -172,6 +195,17 @@ export default function App() {
                 </option>
               ))}
             </select>
+            
+            <div className="w-px h-4 bg-border"></div>
+
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-secondary hover:text-accent hover:border-border-hover transition-all shadow-sm"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+            </button>
+
             <button 
               onClick={() => setShowResetConfirm(true)}
               className="text-xs font-medium text-text-secondary hover:text-red-400 transition-colors"
@@ -216,13 +250,13 @@ export default function App() {
               </div>
               
               <div className="flex flex-col items-center justify-center py-6">
-                <div key={cgpa} className="text-6xl font-semibold text-text-primary tracking-tighter animate-number-pop">
+                <div key={cgpa} className="text-6xl font-bold text-text-primary tracking-tighter animate-number-pop drop-shadow-md">
                   {cgpa !== null ? cgpa.toFixed(2) : '-.--'}
                 </div>
-                <div className="text-xs text-text-secondary mt-3">Cumulative Grade Point Average</div>
+                <div className="text-xs font-medium text-text-secondary mt-3 uppercase tracking-widest">Overall Average</div>
               </div>
 
-              <div className="h-px w-full bg-border my-6"></div>
+              <div className="h-px w-full bg-border my-6 transition-colors duration-500"></div>
               
               <div className="max-h-52 overflow-y-auto pr-3 space-y-4 custom-scrollbar">
                 {semesterResults.slice(0, completedSems).map((res, i) => (
@@ -233,10 +267,10 @@ export default function App() {
 
             {/* Creator Badge */}
             <div className="flex items-center justify-between text-xs text-text-secondary px-2">
-              <span>Made by <span className="text-text-primary font-medium">Kevin Joshua, CSE</span></span>
+              <span>Made by <span className="text-text-primary font-semibold">Kevin Joshua, CSE</span></span>
               <div className="flex gap-3">
-                <a href="https://github.com/kevinjosh10" target="_blank" rel="noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
-                <a href="https://www.linkedin.com/in/kevin-josh10/" target="_blank" rel="noreferrer" className="hover:text-text-primary transition-colors">LinkedIn</a>
+                <a href="https://github.com/kevinjosh10" target="_blank" rel="noreferrer" className="hover:text-accent transition-colors">GitHub</a>
+                <a href="https://www.linkedin.com/in/kevin-josh10/" target="_blank" rel="noreferrer" className="hover:text-accent transition-colors">LinkedIn</a>
               </div>
             </div>
 
@@ -252,8 +286,8 @@ export default function App() {
             onClick={() => setShowResetConfirm(false)}
             style={{ animationDuration: '0.2s' }}
           ></div>
-          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full relative z-10 shadow-2xl animate-scale-in">
-            <h3 className="text-lg font-semibold text-text-primary mb-2">Reset everything?</h3>
+          <div className="bg-surface border border-border rounded-2xl p-6 max-w-sm w-full relative z-10 shadow-2xl animate-scale-in">
+            <h3 className="text-lg font-bold text-text-primary mb-2">Chop down all data?</h3>
             <p className="text-text-secondary text-sm mb-6">
               This will permanently delete all entered grades and your name. You cannot undo this action.
             </p>
@@ -295,13 +329,13 @@ function SemesterSection({ title, subjects, grades, onChange, progress }: any) {
           {title}
         </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider bg-border/50 px-2 py-1 rounded-full">
+          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider bg-border/50 px-2 py-1 rounded-full transition-colors duration-500">
             {Math.round(progress)}% Filled
           </span>
         </div>
       </div>
       
-      <div className="flex flex-col divide-y divide-border/50">
+      <div className="flex flex-col divide-y divide-border/50 transition-colors duration-500">
         {subjects.map((sub: any) => (
           <div 
             key={sub.code} 
@@ -368,6 +402,30 @@ function LeafIcon({ className }: { className?: string }) {
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 22C12 22 20 18 20 12C20 6 12 2 12 2C12 2 4 6 4 12C4 18 12 22 12 22Z" fill="currentColor"/>
       <path d="M12 22V12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
     </svg>
   );
 }
