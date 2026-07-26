@@ -8,7 +8,12 @@ export default function App() {
     Array.from({ length: 8 }, () => ({}))
   );
   const [userName, setUserName] = useState<string>(() => localStorage.getItem('jce-cgpa-name') || '');
+  const [completedSems, setCompletedSems] = useState<number>(() => {
+    const saved = localStorage.getItem('jce-cgpa-sems');
+    return saved ? parseInt(saved, 10) : 8;
+  });
   const [tempName, setTempName] = useState('');
+  const [tempSems, setTempSems] = useState<number>(completedSems);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Load from local storage
@@ -58,8 +63,11 @@ export default function App() {
   const confirmReset = () => {
     setGrades(Array.from({ length: 8 }, () => ({})));
     setUserName('');
+    setCompletedSems(8);
+    setTempSems(8);
     localStorage.removeItem('jce-cgpa-grades');
     localStorage.removeItem('jce-cgpa-name');
+    localStorage.removeItem('jce-cgpa-sems');
     setShowResetConfirm(false);
   };
 
@@ -67,7 +75,9 @@ export default function App() {
     e.preventDefault();
     if (tempName.trim()) {
       setUserName(tempName.trim());
+      setCompletedSems(tempSems);
       localStorage.setItem('jce-cgpa-name', tempName.trim());
+      localStorage.setItem('jce-cgpa-sems', tempSems.toString());
     }
   };
 
@@ -87,7 +97,7 @@ export default function App() {
             JCE
           </div>
           <h1 className="text-2xl font-semibold text-text-primary mb-2 tracking-tight">Welcome</h1>
-          <p className="text-text-secondary mb-10 text-sm">Please enter your name to personalize your calculator.</p>
+          <p className="text-text-secondary mb-10 text-sm">Please enter your name and select how many semesters you have completed.</p>
           
           <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
             <input 
@@ -99,7 +109,16 @@ export default function App() {
               required
               autoFocus
             />
-            <button type="submit" className="linear-button py-3">
+            <select 
+              value={tempSems} 
+              onChange={e => setTempSems(Number(e.target.value))}
+              className="linear-select text-center py-3 font-medium"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                <option key={n} value={n}>{n} {n === 1 ? 'Semester' : 'Semesters'}</option>
+              ))}
+            </select>
+            <button type="submit" className="linear-button py-3 mt-2">
               Continue
             </button>
           </form>
@@ -120,12 +139,29 @@ export default function App() {
             </div>
             <h1 className="font-medium text-sm tracking-wide text-text-primary">CGPA Calculator</h1>
           </div>
-          <button 
-            onClick={() => setShowResetConfirm(true)}
-            className="text-xs font-medium text-text-secondary hover:text-red-400 transition-colors"
-          >
-            Reset Data
-          </button>
+          <div className="flex items-center gap-5">
+            <select 
+              value={completedSems}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setCompletedSems(val);
+                localStorage.setItem('jce-cgpa-sems', val.toString());
+              }}
+              className="bg-transparent text-text-secondary text-xs font-medium outline-none cursor-pointer hover:text-text-primary transition-colors appearance-none"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                <option key={n} value={n} className="bg-surface text-text-primary">
+                  {n} {n === 1 ? 'Semester' : 'Semesters'} ▼
+                </option>
+              ))}
+            </select>
+            <button 
+              onClick={() => setShowResetConfirm(true)}
+              className="text-xs font-medium text-text-secondary hover:text-red-400 transition-colors"
+            >
+              Reset Data
+            </button>
+          </div>
         </div>
       </header>
 
@@ -139,7 +175,7 @@ export default function App() {
             <p className="text-text-secondary text-sm mt-1">Enter your grades to calculate your performance.</p>
           </div>
           
-          {allSemestersSubjects.map((subjects, i) => (
+          {allSemestersSubjects.slice(0, completedSems).map((subjects, i) => (
             <div key={`sem-${i}`} className={`animate-fade-in-up delay-${Math.min(i * 100, 700)}`}>
               <SemesterSection 
                 title={`Semester ${i + 1}`}
@@ -172,7 +208,7 @@ export default function App() {
               <div className="h-px w-full bg-border my-6"></div>
               
               <div className="max-h-52 overflow-y-auto pr-3 space-y-4 custom-scrollbar">
-                {semesterResults.map((res, i) => (
+                {semesterResults.slice(0, completedSems).map((res, i) => (
                   <ResultRow key={`res-${i}`} label={`Sem ${i + 1}`} value={res.gpa} />
                 ))}
               </div>
