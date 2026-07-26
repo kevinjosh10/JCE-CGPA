@@ -93,7 +93,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-base flex flex-col items-center justify-center font-sans p-4">
         <div className="max-w-sm w-full animate-fade-in-up text-center">
-          <div className="w-12 h-12 bg-white text-black flex items-center justify-center font-bold text-lg rounded-xl mx-auto mb-8 shadow-[0_0_30px_rgba(255,255,255,0.15)]">
+          <div className="w-12 h-12 bg-accent text-base flex items-center justify-center font-bold text-lg rounded-xl mx-auto mb-8 shadow-[0_0_30px_rgba(34,197,94,0.15)]">
             JCE
           </div>
           <h1 className="text-2xl font-semibold text-text-primary mb-2 tracking-tight">Welcome</h1>
@@ -134,7 +134,7 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border h-16 flex items-center">
         <div className="max-w-6xl w-full mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-white text-black flex items-center justify-center font-bold text-xs rounded-md shadow-sm">
+            <div className="w-7 h-7 bg-accent text-base flex items-center justify-center font-bold text-xs rounded-md shadow-sm">
               JCE
             </div>
             <h1 className="font-medium text-sm tracking-wide text-text-primary">CGPA Calculator</h1>
