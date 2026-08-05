@@ -1,32 +1,23 @@
-# React + TypeScript + Vite
+# JCE CGPA Calculator
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A premium, fast, and interactive CGPA calculator designed specifically for JCE students. 
 
-Currently, two official plugins are available:
+**🚀 Live Demo: [https://kevinjosh10.github.io/JCE-CGPA/](https://kevinjosh10.github.io/JCE-CGPA/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
+- **Dynamic Themes:** Instantly toggle between a Bright Woodland (light) and Deep Forest (dark) theme.
+- **Cinematic Experience:** Features a beautiful HTML5 video background and responsive micro-animations.
+- **Target Forecaster:** Set a goal CGPA and find out exactly what grades you need in your remaining semesters.
+- **Share Results:** Generate and download a pixel-perfect snapshot of your results with a single click.
+- **High-Achiever Celebration:** Hit a 9.0+ CGPA to trigger a spectacular confetti celebration!
+- **Persistent Storage:** Saves your grades locally so you don't lose progress when you leave the site.
 
-## React Compiler
+## Built With
+- **React 19 & TypeScript**
+- **Vite**
+- **Tailwind CSS v4**
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Creator
+Made with ❤️ by Kevin Joshua, CSE.
+- [GitHub Profile](https://github.com/kevinjosh10)
+- [LinkedIn Profile](https://www.linkedin.com/in/kevin-josh10/)
